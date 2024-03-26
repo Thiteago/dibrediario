@@ -37,6 +37,8 @@ export async function getDailyMatches(date = null) {
 
       matchElement.querySelectorAll('[class^="GroupByChampionshipsstyle__MomentsWrapper"] > a').forEach((matchWrapper) => {
         const matchInfo = {}
+        let matchTime = matchWrapper.querySelector('div:first-child > div:first-child > div:last-child > div:first-child > span:last-child')
+        matchTime ? matchInfo.time = matchTime.textContent : matchInfo.time = 'Ainda não definido'
         let homeInfo = matchWrapper.querySelector('div[type="home"]')
         let awayInfo = matchWrapper.querySelector('div[type="away"]')
         matchInfo.team1 = homeInfo.querySelector('div:first-child > span').textContent
