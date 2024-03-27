@@ -5,18 +5,24 @@ export async function getDailyMatches(date = null) {
   const page = await browser.newPage();
 
   if(date){
-    await page.goto('https://ge.globo.com/agenda/#/futebol/' + date)
+    await page.goto('https://ge.globo.com/agenda/#/futebol/' + date, { waitUntil: 'networkidle2', timeout: 0 })
   }else{
-    await page.goto('https://ge.globo.com/agenda/')
+    await page.goto('https://ge.globo.com/agenda/', { waitUntil: 'networkidle2' , timeout: 0})
   }
   
   await page.setViewport({width: 1080, height: 1024});
 
-  await page.waitForSelector('[class^="GroupByChampionshipsstyle__GroupByChampionshipsWrapper"]')
+  const matches = await page.evaluate((date) => {
+    const today = new Date()
 
-  const matches = await page.evaluate(() => {
+    const status = {
+      'ENCERRADA': 'Finalizado',
+      'REAL_TIME': 'Em Andamento',
+      'PRE_JOGO': 'Pré Jogo',
+      'PRE_DIA': 'PRE_DIA'
+    }
     const matches = []
-    const matchesElements = document.querySelectorAll('[class^="GroupByChampionshipsstyle__GroupByChampionshipsWrapper"]') // isso aqui ta certo
+    const matchesElements = document.querySelectorAll('[class^="GroupByChampionshipsstyle__GroupByChampionshipsWrapper"]')
     matchesElements.forEach((matchElement) => {
       const matchChampionship = {}
       let result = matchElement.querySelector('a > span')
@@ -37,8 +43,29 @@ export async function getDailyMatches(date = null) {
 
       matchElement.querySelectorAll('[class^="GroupByChampionshipsstyle__MomentsWrapper"] > a').forEach((matchWrapper) => {
         const matchInfo = {}
-        let matchTime = matchWrapper.querySelector('div:first-child > div:first-child > div:last-child > div:first-child > span:last-child')
-        matchTime ? matchInfo.time = matchTime.textContent : matchInfo.time = 'Ainda não definido'
+        let matchTimeSpans = matchWrapper.querySelectorAll('span[class^="sc-eqUAAy dpZzQr"]')
+
+        if(matchTimeSpans.length > 0){
+          matchTimeSpans.forEach((span) => {
+            if(span.textContent.match(/\d{2}:\d{2}/)){
+              matchInfo.time = span.textContent
+            }
+            if(!matchInfo.time){
+              matchInfo.time = 'Ainda não definido'
+            }
+          })
+        }
+
+        let matchStatus = matchWrapper.querySelector('span[data-status-id]').getAttribute('data-status-id')
+        matchInfo.status = status[matchStatus]
+
+        if(matchInfo.status === 'PRE_DIA'){
+          if(date){
+            matchInfo.status = 'Ainda não ocorreu'
+          }
+          matchInfo.time > today.getHours() + ':' + today.getMinutes() ? matchInfo.status = 'Pré Jogo' : matchInfo.status = 'Ainda não ocorreu'
+        }
+
         let homeInfo = matchWrapper.querySelector('div[type="home"]')
         let awayInfo = matchWrapper.querySelector('div[type="away"]')
         matchInfo.team1 = homeInfo.querySelector('div:first-child > span').textContent
@@ -54,7 +81,7 @@ export async function getDailyMatches(date = null) {
       matches.push(matchChampionship)
     })
     return matches
-  })
+  }, date)
 
   await browser.close()
   return matches
