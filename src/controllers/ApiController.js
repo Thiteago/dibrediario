@@ -1,12 +1,10 @@
 
-import { getDailyMatches } from '../services/crawlers/daily.js';
+import { getMatchesData } from '../services/crawlers/daily.js';
 
 export class ApiController {
   async getDailyMatches(req, res) {
-    let today = new Date();
-    today = today.getDate() + '/' + (today.getMonth() + 1) + '/' + today.getFullYear();
-    let matches = await getDailyMatches();
-    return res.json({ message: `Daily matches - ${today}`, matches});
+    let matches = await getMatchesData();
+    return res.json({matches});
   }
 
   getSpecificMatch = async (req, res) => {
@@ -14,7 +12,7 @@ export class ApiController {
     if (!this.#isDateValid(date)) {
       return res.status(400).json({ message: 'Invalid date format. Please use dd-mm-yyyy.' });
     }
-    let matches = await getDailyMatches(date);
+    let matches = await getMatchesData(date);
     return res.json({ message: `Matches from ${date}`, matches});
   }
 
